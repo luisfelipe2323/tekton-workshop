@@ -32,11 +32,13 @@ You can follow this tutorial using [Cloud Shell](/shell), which comes preinstall
 To use Cloud Shell:
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
-2. Click the ```Activate Shell Button``` at the top of the Console window.
+2. Click the `Activate Shell Button` at the top of the Console window.
 
     A Cloud Shell session opens inside a new frame at the bottom of the console and displays a command-line prompt.
 
-    ```Cloud Shell session```
+    ```console
+    Cloud Shell session
+    ```
 
 ### Option B: Use command-line tools locally
 
@@ -44,10 +46,10 @@ If you prefer to follow this tutorial on your workstation, you need to install t
 
 1. [Install the Google Cloud SDK](/sdk/docs/quickstarts), which includes the `gcloud` command-line tool.
 2. Using the `gcloud` command line tool, install the [Kubernetes](https://kubernetes.io) command-line tool. `kubectl` is used to communicate with Kubernetes, which is the cluster orchestration system of GKE clusters:
+    ```console
+    gcloud components install kubectl
+    ```
 
-    ```gcloud components install kubectl```
-
-    </devsite-code>
 3. Install [Docker Community Edition (CE)](https://docs.docker.com/engine/installation/) on your workstation. You will use this to build a container image for the application.
 
 4. Install the [Git source control](https://git-scm.com/downloads) tool to fetch the sample application from GitHub.
@@ -62,27 +64,33 @@ The application is packaged as a Docker image, using the [Dockerfile](https://gi
 
 1. Download the `hello-app` source code by running the following commands:
 
-    ```git clone https://github.com/GoogleCloudPlatform/kubernetes-engine-samples
+    ```console
+    git clone https://github.com/GoogleCloudPlatform/kubernetes-engine-samples
     cd kubernetes-engine-samples/hello-app
     ```
 
 2. Set the `PROJECT_ID` environment variable to your [Google Cloud project ID](/resource-manager/docs/creating-managing-projects#identifying_projects) (<var>project-id</var>). The `PROJECT_ID` variable will be used to associate the container image with your project's [Container Registry](/container-registry).
 
-    ```export PROJECT_ID=<var>project-id</var>```
+    ```console
+    export PROJECT_ID=<var>project-id</var>
+    ```
 
 3. Build the container image of this application and tag it for uploading:
 
-    ```docker build -t gcr.io/${PROJECT_ID}/hello-app:v1 .```
+    ```console
+    docker build -t gcr.io/${PROJECT_ID}/hello-app:v1 .
+    ```
 
     This command instructs Docker to build the image using the `Dockerfile` in the current directory and tag it with a name, such as `gcr.io/my-project/hello-app:v1`. The `gcr.io` prefix refers to [Container Registry](/container-registry), where the image will be hosted. Running this command does not upload the image yet.
 
 4. Run the `docker images` command to verify that the build was successful:
-
-    ```docker images
+    ```console
+    docker images
     ```
 
     Output:
-    ```REPOSITORY                     TAG                 IMAGE ID            CREATED             SIZE
+    ```console
+    REPOSITORY                     TAG                 IMAGE ID            CREATED             SIZE
     gcr.io/my-project/hello-app    v1                  25cfadb1bf28        10 seconds ago      54 MB
     ```
 
@@ -92,23 +100,30 @@ You need to upload the container image to a registry so that GKE can download an
 
 1. Configure the Docker command-line tool to authenticate to [Container Registry](/container-registry) (you need to run this only once):
 
-    ```gcloud auth configure-docker```
+    ```consolegcloud auth configure-docker
+    ```
 
 2. You can now use the Docker command-line tool to upload the image to your Container Registry:
 
-    ```docker push gcr.io/${PROJECT_ID}/hello-app:v1```
+    ```console
+    docker push gcr.io/${PROJECT_ID}/hello-app:v1
+    ```
 
 ## Step 3: Run your container locally (optional)
 
 1. Test your container image using your local Docker engine:
 
-    ```docker run --rm -p 8080:8080 gcr.io/${PROJECT_ID}/hello-app:v1```
+    ```console
+    docker run --rm -p 8080:8080 gcr.io/${PROJECT_ID}/hello-app:v1
+    ```
 
 2. If you're using Cloud Shell, click the **Web Preview** button ![Web Preview Button](/shell/docs/images/web_preview.svg) and then select the `8080` port number. GKE opens the preview URL on its proxy service in a new browser window.
 
 3. Otherwise, open a new terminal window (or a Cloud Shell tab) and run to verify if the container works and responds to requests with "Hello, World!":
 
-    ```curl http://localhost:8080```
+    ```console
+    curl http://localhost:8080
+    ```
 
     Once you've seen a successful response, you can shut down the container by pressing **Ctrl+C** in the tab where the `docker run` command is running.
 
@@ -120,24 +135,27 @@ Once you have created a GKE cluster, you use Kubernetes to deploy applications t
 
 1. Set your [project ID](/resource-manager/docs/creating-managing-projects#identifying_projects) and [Compute Engine zone](/compute/docs/zones#available) options for the `gcloud` tool:
 
-    ```gcloud config set project $PROJECT_ID
-    gcloud config set compute/zone <var>compute-zone</var>```
+    ```console
+    gcloud config set project $PROJECT_ID
+    gcloud config set compute/zone <var>compute-zone</var>
+    ```
 
 2. Create a two-node cluster named `hello-cluster`:
-
-
-    ```gcloud container clusters create hello-cluster --num-nodes=2
+    ```console
+    gcloud container clusters create hello-cluster --num-nodes=2
     ```
 
     It may take several minutes for the cluster to be created.
 
 3. After the command completes, run the following command to see the cluster's two worker VM instances:
 
-    ```gcloud compute instances list
+    ```console
+    gcloud compute instances list
     ```
 
     Output:
-    ```NAME                                          ZONE           MACHINE_TYPE   PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP     STATUS
+    ```console
+    NAME                                          ZONE           MACHINE_TYPE   PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP     STATUS
     gke-hello-cluster-default-pool-07a63240-822n  us-central1-b  n1-standard-1               10.128.0.7   35.192.16.148   RUNNING
     gke-hello-cluster-default-pool-07a63240-kbtq  us-central1-b  n1-standard-1               10.128.0.4   35.193.136.140  RUNNING
     ```
