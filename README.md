@@ -65,10 +65,10 @@ The application is packaged as a Docker image, using the [Dockerfile](https://gi
     cd tekton-workshop/hello-app
     ```
 
-2. Set the `PROJECT_ID` environment variable to your [Google Cloud project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects) (<var>project-id</var>). The `PROJECT_ID` variable will be used to associate the container image with your project's [Container Registry](https://cloud.google.com/container-registry).
+2. Set the `PROJECT_ID` environment variable to your [Google Cloud project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects) (`gcloud config get-value project`). The `PROJECT_ID` variable will be used to associate the container image with your project's [Container Registry](https://cloud.google.com/container-registry).
 
     ```bash
-    export PROJECT_ID=<var>project-id</var>
+    export PROJECT_ID=$(gcloud config get-value project)
     ```
 
 3. Build the container image of this application and tag it for uploading:
@@ -136,7 +136,7 @@ Once you have created a GKE cluster, you use Kubernetes to deploy applications t
 
     ```bash
     gcloud config set project $PROJECT_ID
-    gcloud config set compute/zone <var>compute-zone</var>
+    gcloud config set compute/zone us-east1-d
     ```
 
 2. Create a two-node cluster named `hello-cluster`:
@@ -288,7 +288,7 @@ GKE's rolling update mechanism ensures that your application remains up and avai
     kubectl set image deployment/hello-web hello-app=gcr.io/${PROJECT_ID}/hello-app:v2
     ```
 
-4. Visit your application again at `http://<var>external-ip</var>`, and observe the changes you made take effect.
+4. Visit your application again at `http://external-ip`, and observe the changes you made take effect.
 
 ## Cleaning up
 
