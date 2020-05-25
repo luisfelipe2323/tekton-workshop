@@ -61,8 +61,8 @@ The application is packaged as a Docker image, using the [Dockerfile](https://gi
 1. Download the `hello-app` source code by running the following commands:
 
     ```bash
-    git clone https://github.com/GoogleCloudPlatform/kubernetes-engine-samples
-    cd kubernetes-engine-samples/hello-app
+    git clone https://github.com/eddimas/tekton-workshop
+    cd tekton-workshop/hello-app
     ```
 
 2. Set the `PROJECT_ID` environment variable to your [Google Cloud project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects) (<var>project-id</var>). The `PROJECT_ID` variable will be used to associate the container image with your project's [Container Registry](https://cloud.google.com/container-registry).
