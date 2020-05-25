@@ -23,7 +23,7 @@ Take the following steps to enable the Kubernetes Engine API:
 1. Visit the [Kubernetes Engine page](https://console.cloud.google.com/projectselector/kubernetes) in the Google Cloud Console.
 2. Create or select a project.
 3. Wait for the API and related services to be enabled. This can take several minutes.
-4. Make sure that billing is enabled for your Google Cloud project. [Learn how to confirm billing is enabled for your project](/billing/docs/how-to/modify-project).
+4. Make sure that billing is enabled for your Google Cloud project. [Learn how to confirm billing is enabled for your project](https://cloud.google.com/billing/docs/how-to/modify-project).
 
 ### Option A: Use Cloud Shell
 
@@ -39,7 +39,7 @@ To use Cloud Shell:
 
 If you prefer to follow this tutorial on your workstation, you need to install the following tools:
 
-1. [Install the Google Cloud SDK](/sdk/docs/quickstarts), which includes the `gcloud` command-line tool.
+1. [Install the Google Cloud SDK](https://cloud.google.com/sdk/), which includes the `gcloud` command-line tool.
 2. Using the `gcloud` command line tool, install the [Kubernetes](https://kubernetes.io) command-line tool. `kubectl` is used to communicate with Kubernetes, which is the cluster orchestration system of GKE clusters:
 
     ```bash
@@ -65,7 +65,7 @@ The application is packaged as a Docker image, using the [Dockerfile](https://gi
     cd kubernetes-engine-samples/hello-app
     ```
 
-2. Set the `PROJECT_ID` environment variable to your [Google Cloud project ID](/resource-manager/docs/creating-managing-projects#identifying_projects) (<var>project-id</var>). The `PROJECT_ID` variable will be used to associate the container image with your project's [Container Registry](/container-registry).
+2. Set the `PROJECT_ID` environment variable to your [Google Cloud project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects) (<var>project-id</var>). The `PROJECT_ID` variable will be used to associate the container image with your project's [Container Registry](https://cloud.google.com/container-registry).
 
     ```bash
     export PROJECT_ID=<var>project-id</var>
@@ -77,7 +77,7 @@ The application is packaged as a Docker image, using the [Dockerfile](https://gi
     docker build -t gcr.io/${PROJECT_ID}/hello-app:v1 .
     ```
 
-    This command instructs Docker to build the image using the `Dockerfile` in the current directory and tag it with a name, such as `gcr.io/my-project/hello-app:v1`. The `gcr.io` prefix refers to [Container Registry](/container-registry), where the image will be hosted. Running this command does not upload the image yet.
+    This command instructs Docker to build the image using the `Dockerfile` in the current directory and tag it with a name, such as `gcr.io/my-project/hello-app:v1`. The `gcr.io` prefix refers to [Container Registry](https://cloud.google.com/container-registry), where the image will be hosted. Running this command does not upload the image yet.
 
 4. Run the `docker images` command to verify that the build was successful:
 
@@ -96,7 +96,7 @@ The application is packaged as a Docker image, using the [Dockerfile](https://gi
 
 You need to upload the container image to a registry so that GKE can download and run it.
 
-1. Configure the Docker command-line tool to authenticate to [Container Registry](/container-registry) (you need to run this only once):
+1. Configure the Docker command-line tool to authenticate to [Container Registry](https://cloud.google.com/container-registry) (you need to run this only once):
 
     ```bash
     gcloud auth configure-docker
@@ -116,7 +116,7 @@ You need to upload the container image to a registry so that GKE can download an
     docker run --rm -p 8080:8080 gcr.io/${PROJECT_ID}/hello-app:v1
     ```
 
-2. If you're using Cloud Shell, click the **Web Preview** button ![Web Preview Button](/shell/docs/images/web_preview.svg) and then select the `8080` port number. GKE opens the preview URL on its proxy service in a new browser window.
+2. If you're using Cloud Shell, click the **Web Preview** button ![Web Preview Button](https://cloud.google.com/shell/docs/images/web_preview.svg) and then select the `8080` port number. GKE opens the preview URL on its proxy service in a new browser window.
 
 3. Otherwise, open a new terminal window (or a Cloud Shell tab) and run to verify if the container works and responds to requests with "Hello, World!":
 
@@ -128,11 +128,11 @@ You need to upload the container image to a registry so that GKE can download an
 
 ## Step 4: Create a container cluster
 
-Now that the container image is stored in a registry, you need to create a [cluster](/kubernetes-engine/docs/concepts/cluster-architecture) to run the container image. A cluster consists of a pool of [Compute Engine VM instances](/compute) running [Kubernetes](https://kubernetes.io), the open source cluster orchestration system that powers GKE.
+Now that the container image is stored in a registry, you need to create a [cluster](https://cloud.google.com/kubernetes-engine/docs/concepts/cluster-architecture) to run the container image. A cluster consists of a pool of [Compute Engine VM instances](https://cloud.google.com/compute) running [Kubernetes](https://kubernetes.io), the open source cluster orchestration system that powers GKE.
 
 Once you have created a GKE cluster, you use Kubernetes to deploy applications to the cluster and manage the applications' lifecycle.
 
-1. Set your [project ID](/resource-manager/docs/creating-managing-projects#identifying_projects) and [Compute Engine zone](/compute/docs/zones#available) options for the `gcloud` tool:
+1. Set your [project ID](https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects) and [Compute Engine zone](https://cloud.google.com/compute/docs/zones#available) options for the `gcloud` tool:
 
     ```bash
     gcloud config set project $PROJECT_ID
@@ -206,7 +206,7 @@ Run the following command to expose your application to traffic from the interne
 kubectl expose deployment hello-web --type=LoadBalancer --port 80 --target-port 8080
 ```
 
-This command creates a [Service](https://kubernetes.io/docs/user-guide/services/) resource, which provides networking and IP support to your application's Pods. GKE creates an external IP and a Load Balancer ([subject to billing](/compute/pricing#lb)) for your application.
+This command creates a [Service](https://kubernetes.io/docs/user-guide/services/) resource, which provides networking and IP support to your application's Pods. GKE creates an external IP and a Load Balancer ([subject to billing](https://cloud.google.com/compute/pricing#lb)) for your application.
 
 The `--port` flag specifies the port number configured on the Load Balancer, and the `--target-port` flag specifies the port number that the `hello-app` container is listening on.
 
@@ -310,12 +310,12 @@ After completing this tutorial, perform these steps to remove the following reso
 
 ## What's next
 
-* Read the [Load Balancers](/kubernetes-engine/docs/tutorials/http-balancer) tutorial, which demonstrates advanced load balancing configurations for web applications.
+* Read the [Load Balancers](https://cloud.google.com/kubernetes-engine/docs/tutorials/http-balancer) tutorial, which demonstrates advanced load balancing configurations for web applications.
 
-* Learn how to store persistent data in your application through the [MySQL and WordPress](/kubernetes-engine/docs/tutorials/persistent-disk) tutorial.
+* Learn how to store persistent data in your application through the [MySQL and WordPress](https://cloud.google.com/kubernetes-engine/docs/tutorials/persistent-disk) tutorial.
 
-* Configure [static IP and domain name](/kubernetes-engine/docs/tutorials/configuring-domain-name-static-ip) for your application.
+* Configure [static IP and domain name](https://cloud.google.com/kubernetes-engine/docs/tutorials/configuring-domain-name-static-ip) for your application.
 
-* Explore other [Kubernetes Engine tutorials](/kubernetes-engine/docs/tutorials).
+* Explore other [Kubernetes Engine tutorials](https://cloud.google.com/kubernetes-engine/docs/tutorials).
 
-* Try out other Google Cloud features for yourself. Have a look at our [tutorials](/docs/tutorials).
+* Try out other Google Cloud features for yourself. Have a look at our [tutorials](https://cloud.google.com/docs/tutorials).
