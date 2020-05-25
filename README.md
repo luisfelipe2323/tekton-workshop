@@ -36,7 +36,7 @@ To use Cloud Shell:
 
     A Cloud Shell session opens inside a new frame at the bottom of the console and displays a command-line prompt.
 
-    ```console
+    ```bash
     Cloud Shell session
     ```
 
