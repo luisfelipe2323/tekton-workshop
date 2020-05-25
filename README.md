@@ -1,317 +1,279 @@
-[Workshop Slides](https://docs.google.com/presentation/d/e/2PACX-1vQBnNkuLtLbdB8RRoObjqScRLWW2c4DR-hHfJamGvrbQOqewxikyyCHsIzB_bQf9gHW73UVcY1LP7Nk/pub)
 
-Based on [this tutorial](https://github.com/tektoncd/pipeline/blob/master/docs/tutorial.md)
+# Deploying a containerized web application
 
+This tutorial shows you how to package a web application in a Docker container image, and run that container image on a Google Kubernetes Engine (GKE) cluster as a load-balanced set of replicas that can scale to the needs of your users.
 
-# Tekton Workshop
+## Objectives
 
-## Prerequisites checklist
+To package and deploy your application on GKE, you must:
 
-- [x] google cloud account
-- [x] git and python installed
-- [x] gcloud sdk installed
-- [x] gcloud kubectl component installed
-- [x] gcloud init performed
-- [ ] gcloud config list
-    ```
-    [compute]
-    region = us-east1
-    zone = us-east1-d
-    [core]
-    account = eduardodimas36@gmail.com
-    disable_usage_reporting = False
-    project = polar-outlet-263605
+1. Package your app into a Docker image.
+2. Upload the image to a registry.
+3. Run the container locally on your machine (optional).
+4. Create a container cluster.
+5. Deploy your app to the cluster.
+6. Expose your app to the internet.
+7. Scale up your deployment.
+8. Deploy a new version of your app.
 
-    Your active configuration is: [default]
-    ```
-- [ ] kubectl version
-    ```
-    Client Version: version.Info{Major:"1", Minor:"14", GitVersion:"v1.14.10", GitCommit:"575467a0eaf3ca1f20eb86215b3bde40a5ae617a", GitTreeState:"clean", BuildDate:"2019-12-11T12:41:00Z", GoVersion:"go1.12.12", Compiler:"gc", Platform:"linux/amd64"}
-    Server Version: version.Info{Major:"1", Minor:"14+", GitVersion:"v1.14.10-gke.36", GitCommit:"34a615f32e9a0c9e97cdb9f749adb392758349a6", GitTreeState:"clean", BuildDate:"2020-04-06T16:33:17Z", GoVersion:"go1.12.12b4", Compiler:"gc", Platform:"linux/amd64"}
-    ```
+## Before you begin
 
-## Clone the workshop code
+Take the following steps to enable the Kubernetes Engine API:
 
-1. Clone the sample code from GitHub.
+1. Visit the [Kubernetes Engine page](https://console.cloud.google.com/projectselector/kubernetes) in the Google Cloud Console.
+2. Create or select a project.
+3. Wait for the API and related services to be enabled. This can take several minutes.
+4. Make sure that billing is enabled for your Google Cloud project. [Learn how to confirm billing is enabled for your project](/billing/docs/how-to/modify-project).
 
-    ```
-    git clone https://github.com/eddimas/tekton-workshop
-    cd tekton-workshop
-    ```
+### Option A: Use Cloud Shell
 
-## Create a Service Account for your pipelines to use
+You can follow this tutorial using [Cloud Shell](/shell), which comes preinstalled with the `gcloud`, `docker`, and `kubectl` command-line tools used in this tutorial. If you use Cloud Shell, you don't need to install these command-line tools on your workstation.
 
-1. Create the GCP service account
+To use Cloud Shell:
 
-    ```
-    gcloud iam service-accounts create tekton --display-name tekton
-    ```
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Click the ```Activate Shell Button``` at the top of the Console window.
 
-1. Add permissions to the service account to be able to push images and deploy to your Kubernetes clusters.
+    A Cloud Shell session opens inside a new frame at the bottom of the console and displays a command-line prompt.
 
-    ```
-    export GCP_PROJECT=$(gcloud config get-value project)
-    gcloud projects add-iam-policy-binding ${GCP_PROJECT} \
-           --member serviceAccount:tekton@${GCP_PROJECT}.iam.gserviceaccount.com \
-           --role roles/storage.admin
-    gcloud projects add-iam-policy-binding ${GCP_PROJECT} \
-           --member serviceAccount:tekton@${GCP_PROJECT}.iam.gserviceaccount.com \
-           --role roles/container.developer
-    ```
+    ```Cloud Shell session```
 
+### Option B: Use command-line tools locally
 
-## Create a Kubernetes Cluster
+If you prefer to follow this tutorial on your workstation, you need to install the following tools:
 
-1. Enable the Kubernetes Engine API.
+1. [Install the Google Cloud SDK](/sdk/docs/quickstarts), which includes the `gcloud` command-line tool.
+2. Using the `gcloud` command line tool, install the [Kubernetes](https://kubernetes.io) command-line tool. `kubectl` is used to communicate with Kubernetes, which is the cluster orchestration system of GKE clusters:
 
-    ```
-    gcloud services enable container.googleapis.com
+    ```gcloud components install kubectl```
+
+    </devsite-code>
+3. Install [Docker Community Edition (CE)](https://docs.docker.com/engine/installation/) on your workstation. You will use this to build a container image for the application.
+
+4. Install the [Git source control](https://git-scm.com/downloads) tool to fetch the sample application from GitHub.
+
+## Step 1: Build the container image
+
+GKE accepts Docker images as the application deployment format. To build a Docker image, you need to have an application and a Dockerfile.
+
+For this tutorial, you will deploy a [sample web application](https://github.com/GoogleCloudPlatform/kubernetes-engine-samples/tree/master/hello-app) called `hello-app`, a web server written in [Go](https://golang.org/) that responds to all requests with the message “Hello, World!” on port 80.
+
+The application is packaged as a Docker image, using the [Dockerfile](https://github.com/GoogleCloudPlatform/kubernetes-engine-samples/tree/master/hello-app/Dockerfile) that contains instructions on how the image is built. You will use this Dockerfile to package your application.
+
+1. Download the `hello-app` source code by running the following commands:
+
+    ```git clone https://github.com/GoogleCloudPlatform/kubernetes-engine-samples
+    cd kubernetes-engine-samples/hello-app
     ```
 
-1. Create the Google Kubernetes Engine Cluster that you'll use to deploy Tekton and its pipelines.
+2. Set the `PROJECT_ID` environment variable to your [Google Cloud project ID](/resource-manager/docs/creating-managing-projects#identifying_projects) (<var>project-id</var>). The `PROJECT_ID` variable will be used to associate the container image with your project's [Container Registry](/container-registry).
 
-    ```shell
-    gcloud config set compute/zone us-east1-d
-    export GCP_PROJECT=$(gcloud config get-value project)
-    gcloud container clusters create tekton-workshop \
-          --service-account tekton@${GCP_PROJECT}.iam.gserviceaccount.com \
-          --scopes cloud-platform \
-          --machine-type n1-standard-2
+    ```export PROJECT_ID=<var>project-id</var>```
+
+3. Build the container image of this application and tag it for uploading:
+
+    ```docker build -t gcr.io/${PROJECT_ID}/hello-app:v1 .```
+
+    This command instructs Docker to build the image using the `Dockerfile` in the current directory and tag it with a name, such as `gcr.io/my-project/hello-app:v1`. The `gcr.io` prefix refers to [Container Registry](/container-registry), where the image will be hosted. Running this command does not upload the image yet.
+
+4. Run the `docker images` command to verify that the build was successful:
+
+    ```docker images
     ```
 
-## Installation
-
-### Tekton
-
-1. Install Tekton into your cluster.
-
-    ```
-    kubectl apply --filename https://storage.googleapis.com/tekton-releases/latest/release.yaml
+    Output:
+    ```REPOSITORY                     TAG                 IMAGE ID            CREATED             SIZE
+    gcr.io/my-project/hello-app    v1                  25cfadb1bf28        10 seconds ago      54 MB
     ```
 
-### `tkn` CLI
+## Step 2: Upload the container image
 
-1. Install the `tkn` CLI into your Cloud Shell.
+You need to upload the container image to a registry so that GKE can download and run it.
 
-    ```
-    curl -LO https://github.com/tektoncd/cli/releases/download/v0.2.0/tkn_0.2.0_Linux_x86_64.tar.gz
-    sudo tar xvzf tkn_0.2.0_Linux_x86_64.tar.gz -C /usr/local/bin/ tkn
-    ```
+1. Configure the Docker command-line tool to authenticate to [Container Registry](/container-registry) (you need to run this only once):
 
-### Installing Tekton Dashboard
+    ```gcloud auth configure-docker```
 
-1. Install the Tekton Dashboard to visualize your Tekton pipelines.
+2. You can now use the Docker command-line tool to upload the image to your Container Registry:
 
-    ```
-    kubectl apply --filename https://github.com/tektoncd/dashboard/releases/download/v0.1.0/release.yaml
-    ```
+    ```docker push gcr.io/${PROJECT_ID}/hello-app:v1```
 
-## Hello World!
+## Step 3: Run your container locally (optional)
+
+1. Test your container image using your local Docker engine:
+
+    ```docker run --rm -p 8080:8080 gcr.io/${PROJECT_ID}/hello-app:v1```
+
+2. If you're using Cloud Shell, click the **Web Preview** button ![Web Preview Button](/shell/docs/images/web_preview.svg) and then select the `8080` port number. GKE opens the preview URL on its proxy service in a new browser window.
+
+3. Otherwise, open a new terminal window (or a Cloud Shell tab) and run to verify if the container works and responds to requests with "Hello, World!":
+
+    ```curl http://localhost:8080```
+
+    Once you've seen a successful response, you can shut down the container by pressing **Ctrl+C** in the tab where the `docker run` command is running.
+
+## Step 4: Create a container cluster
+
+Now that the container image is stored in a registry, you need to create a [cluster](/kubernetes-engine/docs/concepts/cluster-architecture) to run the container image. A cluster consists of a pool of [Compute Engine VM instances](/compute) running [Kubernetes](https://kubernetes.io), the open source cluster orchestration system that powers GKE.
+
+Once you have created a GKE cluster, you use Kubernetes to deploy applications to the cluster and manage the applications' lifecycle.
+
+1. Set your [project ID](/resource-manager/docs/creating-managing-projects#identifying_projects) and [Compute Engine zone](/compute/docs/zones#available) options for the `gcloud` tool:
+
+    ```gcloud config set project $PROJECT_ID
+    gcloud config set compute/zone <var>compute-zone</var>```
+
+2. Create a two-node cluster named `hello-cluster`:
 
 
-### Creating and running a task
-
-1. First you'll create a task definition. In this case the task will echo "Hello Tekton Workshop!". 
-   Note that the task step spec is a normal Kubernetes [Pod Spec definition](https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.15/#podspec-v1-core).
-
-    ```
-    kubectl apply -f tasks/hello-world.yaml
-    ```
-
-1. You'll notice nothing is running in your cluster yet. This is because we haven't yet created the resource needed to invoke our task, the TaskRun.
-
-    ```
-    kubectl get pods
-    ```
-
-1. Apply the TaskRun in your cluster.
-
-    ```
-    kubectl apply -f taskruns/hello-world.yaml
-    ```
-
-1. Now you should see the task's pod running.
-
-    ```
-    kubectl get pods
+    ```gcloud container clusters create hello-cluster --num-nodes=2
     ```
 
-1. When it completes you should be able to see the status of complete
+    It may take several minutes for the cluster to be created.
 
-    ```
-    $  kubectl get pods
-    NAME                                   READY   STATUS      RESTARTS   AGE
-    echo-hello-world-task-run-pod-3ec0b2   0/1     Completed   0          28s
-    ```
+3. After the command completes, run the following command to see the cluster's two worker VM instances:
 
-1. Now you can check the logs. We'll use the automatically added label `tekton.dev/task` to find a pod from our task.
-
-    ```
-    kubectl logs -l tekton.dev/task=echo-hello-world
+    ```gcloud compute instances list
     ```
 
-### Creating a task with inputs and outputs
-
-That was awesome! Kind of... We didn't really do much more than we could accomplish with a Kubernetes Job or Pod.
-
-In this next section you'll create a reusable task that takes in inputs and creates outputs so that we can leverage the business logic of our task across different pipelines.
-
-The inputs and outputs of `Tasks` are `PipelineResources`. There are a few types of pipeline resources that are baked into tekton, for example the `git` and `image`. The `git` resource is (as you'd expect) how we can get source code into our pipelines. The `image` resource allows us to either use or create a Docker image.
-
-1. Create a `git` resource to clone the Skaffold project. We'll use a sample application from there to demonstrate how a pipeline is stitched together.
-
-    ```
-    kubectl apply -f resources/git-skaffold.yaml
+    Output:
+    ```NAME                                          ZONE           MACHINE_TYPE   PREEMPTIBLE  INTERNAL_IP  EXTERNAL_IP     STATUS
+    gke-hello-cluster-default-pool-07a63240-822n  us-central1-b  n1-standard-1               10.128.0.7   35.192.16.148   RUNNING
+    gke-hello-cluster-default-pool-07a63240-kbtq  us-central1-b  n1-standard-1               10.128.0.4   35.193.136.140  RUNNING
     ```
 
-1. Next, we'll create an `image` resource for the image we'll build from the sample application.
+<aside class="note">**Note:** If you are using an existing Google Kubernetes Engine cluster or if you have created a cluster through Google Cloud Console, you need to run the following command to retrieve cluster credentials and configure `kubectl` command-line tool with them:
 
-    ```
-    export GCP_PROJECT=$(gcloud config get-value project)
-    sed -i s/GCP_PROJECT/$GCP_PROJECT/ resources/image-leeroy-web.yaml
-    kubectl apply -f resources/image-leeroy-web.yaml
-    ```
+```gcloud container clusters get-credentials hello-cluster```
 
-1. Now that our resources have been created, lets create a `Task` that clones a git repo as an input
-   and builds an image from it as an output.
+If you have already created a cluster with the `gcloud container clusters create` command listed above, this step is not necessary.
 
-   ```
-   kubectl apply -f tasks/build-docker-image-from-git.yaml
-   ```
+## Step 5: Deploy your application
 
-//TODO diagram here that shows the mapping of these resources
+To deploy and manage applications on a GKE cluster, you must communicate with the Kubernetes cluster management system. You typically do this by using the `kubectl` command-line tool.
 
-1. Next we'll create the `TaskRun` that will map our resources to the task we just created.
+Kubernetes represents applications as [Pods](https://kubernetes.io/docs/concepts/workloads/pods/pod/), which are units that represent a container (or group of tightly-coupled containers). The Pod is the smallest deployable unit in Kubernetes. In this tutorial, each Pod contains only your `hello-app` container.
 
-    ```
-    kubectl apply -f taskruns/leeroy-web-image-build.yaml
-    ```
+The `kubectl create deployment` command below causes Kubernetes to create a [Deployment](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/) named `hello-web` on your cluster. The Deployment manages multiple copies of your application, called replicas, and schedules them to run on the individual nodes in your cluster. In this case, the Deployment will be running only one Pod of your application.
 
-1. Now we can look at the logs from our image build job.
+1. Run the following command to deploy your application:
 
-    ```
-    kubectl logs -l tekton.dev/task=build-docker-image-from-git-source -c step-build-and-push
+    ```kubectl create deployment hello-web --image=gcr.io/${PROJECT_ID}/hello-app:v1```
+
+2. To see the Pod created by the Deployment, run the following command:
+
+    ```kubectl get pods```
+
+    Output:
+    ```NAME                         READY     STATUS    RESTARTS   AGE
+    hello-web-4017757401-px7tx   1/1       Running   0          3s
     ```
 
-1. Once the task is complete we can look for our image in the registry.
+## Step 6: Expose your application to the internet
 
-    ```
-    $  kubectl get pods
-    NAME                                                     READY   STATUS      RESTARTS   AGE
-    build-docker-image-from-git-source-task-run-pod-aaeab8   0/3     Completed   0          107s
-    ```
+By default, the containers you run on GKE are not accessible from the internet because they do not have external IP addresses. You must explicitly expose your application to traffic from the internet.
 
-    ```
-    $  gcloud container images list
-    NAME
-    gcr.io/vic-tekton-1/leeroy-web
-    ```
+Run the following command to expose your application to traffic from the internet:
 
-Now we are getting some real work done!
+<devsite-code>
 
-We were able to create a task that took a git repostiory as
-an input and created a Docker image as its output. Then we created `PipelineResources` for the specific
-repository and image that we wanted to build and mapped them to our `Task` using a `TaskRun`.
+```kubectl expose deployment hello-web --type=LoadBalancer --port 80 --target-port 8080
+```
 
+</devsite-code>
 
-## Stringing tasks together with a `Pipeline`
+This command creates a [Service](https://kubernetes.io/docs/user-guide/services/) resource, which provides networking and IP support to your application's Pods. GKE creates an external IP and a Load Balancer ([subject to billing](/compute/pricing#lb)) for your application.
 
-Pipelines allow you to execute tasks in order and pass the ouptut of one to the input of the other.
-In this part of the tutorial, you'll create a `Pipeline` that takes the output of our image build `Task`
-and deploys it to our cluster. 
+The `--port` flag specifies the port number configured on the Load Balancer, and the `--target-port` flag specifies the port number that the `hello-app` container is listening on.
 
-1. First, you'll need to give the pods that Tekton is creating the ability to deploy into the `default`
-   namespace. Since we installed Tekton using the default configuration it will be deploying pods using 
-   the default Kubernetes service account in the default namespace.
+<aside class="note">**Note:** <span>GKE assigns the external IP address to the **Service** resource—not the Deployment. If you want to find out the external IP that GKE provisioned for your application, you can inspect the Service with the `kubectl get service` command:<devsite-code>
 
-   ```
-   kubectl create rolebinding --serviceaccount default:default --clusterrole admin default-admin
-   ```
+```kubectl get service
+```
 
-1. Lets create the `Task` that deploys to our cluster using `kubectl`.
+Output:
 
-    ```
-    kubectl apply -f tasks/deploy-using-kubectl.yaml
+```NAME         CLUSTER-IP      EXTERNAL-IP     PORT(S)          AGE
+hello-web    10.3.251.122    203.0.113.0     80:30877/TCP     3d
+```
+
+Once you've determined the external IP address for your application, make note of the EXTERNAL-IP address. Point your browser to this URL (such as `http://203.0.113.0`) to check if your application is accessible.
+
+## Step 7: Scale up your application
+
+You add more replicas to your application's Deployment resource by using the `kubectl scale` command.
+
+1. Add two additional replicas to your Deployment (for a total of three):
+
+    ```kubectl scale deployment hello-web --replicas=3
     ```
 
-1. Next, you'll create the `Pipeline` that takes the output of the image build and uses it as a parameter
-   for the deployment `Task`.
+2. View the new replicas running on your cluster:
 
-   ```
-   kubectl apply -f pipelines/tutorial-pipeline.yaml
-   ```
-
-1. Again you'll notice nothing happens when we created those resources. We need to create a `PipelineRun`
-   to execute our `Pipeline`. The `PipelineRun` maps sets the parameters for our `Pipeline`. 
-
-    ```
-    kubectl apply -f pipelineruns/tutorial-pipeline-run-1.yaml
+    ```kubectl get deployment hello-web
     ```
 
-1. Check that PipelineRuns suceeded using `kubectl`.
+    Output:
 
-    ```
-    kubectl get pipelineruns
-    ```
+    ```NAME        DESIRED   CURRENT   UP-TO-DATE   AVAILABLE   AGE
+    hello-web   3         3         3            2           1m```
 
-1. You can also take a look using the `tkn` CLI.
+3. View the Pods for your deployment:
 
-    ```
-    tkn pipelinerun list
-    ```
-Congrats! You've run your first pipeline successfully.
-
-1. Let's make sure our web app was deployed.
-
-    ```
-     $  kubectl logs -l app=leeroy-web
-    2019/08/10 22:42:00 leeroy web server ready 
+    ```kubectl get pods
     ```
 
+    Output:
 
-## Exploring Tekton via the Dashboard
+    ```NAME                         READY     STATUS    RESTARTS   AGE
+    hello-web-4017757401-ntgdb   1/1       Running   0          9s
+    hello-web-4017757401-pc4j9   1/1       Running   0          9s
+    hello-web-4017757401-px7tx   1/1       Running   0          1m```
 
-1. First set up port-forwarding to the Tekton Dashoard from you Cloud Shell environment.
+Now, you have multiple instances of your application running independently of each other and you can use the `kubectl scale` command to adjust capacity of your application.
 
-    ```
-    export TEKTON_POD=$(kubectl get pods -n tekton-pipelines -o jsonpath="{.items[0].metadata.name}" -l app=tekton-dashboard)
-    kubectl port-forward --namespace tekton-pipelines $TEKTON_POD 8080:9097 >> /dev/null &
-    ```
-    
-1. To open the Tekton Dashboard, click Web Preview in Cloud Shell and click Preview on port 8080.
+The load balancer you provisioned in the previous step will start routing traffic to these new replicas automatically.
 
-    ![web preview ui](images/web-preview.png)
-    
-1. When the UI opens, you may see an error due to the URL being malformed. Change the URL by removing `?authuser=0` and then reload the page.
+## Step 8: Deploy a new version of your app
 
-1. Now you can click around to see the Pipelines, Tasks, etc that we've created in this tutorial.
+GKE's rolling update mechanism ensures that your application remains up and available even as the system replaces instances of your old container image with your new one across all the running replicas.
 
-1. Click the "Pipelines" button on the left and then the "tutorial-pipeline" link.
+1. You can create an image for the v2 version of your application by building the same source code and tagging it as v2 (or you can change the `"Hello, World!"` string to `"Hello, GKE!"` before building the image):
 
-    ![pipelines nav](images/pipelines-nav.png)
+    ```docker build -t gcr.io/${PROJECT_ID}/hello-app:v2 .```
 
-1. Now click the "Create PipelineRun" button and set the `skaffold-git` repo, `skaffold-image-leeroy-web` image, and `default` service account. Once those fields have been filled in, click the blue "Create PipelineRun".
+2. Push the image to the Container Registry:
 
-    ![create-pipeline-run](images/create-pipeline-run.png)
-    
-1. You can now view your pipeline run in the UI by clicking the link in the green notification box.
+    ```docker push gcr.io/${PROJECT_ID}/hello-app:v2```
 
-    ![pipeline-detail-link](images/pipeline-detail-link.png)
+3. Apply a rolling update to the existing deployment with an image update:
 
-# Conclusion
+    ```kubectl set image deployment/hello-web hello-app=gcr.io/${PROJECT_ID}/hello-app:v2```
 
-What have we built?
+4. Visit your application again at `http://<var>external-ip</var>`, and observe the changes you made take effect.
 
- * A task that can clone a Git repository and build a Docker image from it.
- * A task that can replace an image path in a Kubernetes YAML and then replace it
- * A parameterized pipeline that strings together our tasks and can be reused for many projects.
+## Cleaning up
 
-# Apendix
+To avoid incurring charges to your Google Cloud Platform account for the resources used in this tutorial:
 
-1. Installing gloud SDK
+After completing this tutorial, perform these steps to remove the following resources and prevent unwanted charges incurring on your account:
 
-    [Installation instructions](https://cloud.google.com/sdk/install)
+1. **Delete the Service:** This deallocates the Cloud Load Balancer created for your Service:
 
-2. Installing kubectl
+    ```kubectl delete service hello-web```
 
-    [Installation instructions](https://kubernetes.io/docs/tasks/tools/install-kubectl)
+2. **Delete the cluster:** This deletes the resources that make up the cluster, such as the compute instances, disks and network resources:
+
+    ```gcloud container clusters delete hello-cluster```
+
+## What's next
+
+* Read the [Load Balancers](/kubernetes-engine/docs/tutorials/http-balancer) tutorial, which demonstrates advanced load balancing configurations for web applications.
+
+* Learn how to store persistent data in your application through the [MySQL and WordPress](/kubernetes-engine/docs/tutorials/persistent-disk) tutorial.
+
+* Configure [static IP and domain name](/kubernetes-engine/docs/tutorials/configuring-domain-name-static-ip) for your application.
+
+* Explore other [Kubernetes Engine tutorials](/kubernetes-engine/docs/tutorials).
+
+* Try out other Google Cloud features for yourself. Have a look at our [tutorials](/docs/tutorials).
